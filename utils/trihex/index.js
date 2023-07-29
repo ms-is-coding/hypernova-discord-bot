@@ -174,15 +174,17 @@ function genSvg(data, options) {
 	const background = options.background;
 	const VIEWBOX = (layers + 1) * 2 * SCALE;
 
-	if (layers > 63) {
-		throw new Error("Data too big");
+	const IMG = layers > 32 ? 1024 : 512;
+
+	if (layers > 67) {
+		throw new Error(`Data too big: ${layers} > 67`);
 	}
 
 	if (type == Types.Null) {
 		throw new Error("Data cannot be encoded");
 	}
 
-	let str = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEWBOX} ${VIEWBOX}" width="512" height="512">\n`;
+	let str = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEWBOX} ${VIEWBOX}" width="${IMG}" height="${IMG}">\n`;
 	if (background) {
 		str += `<polygon points="0 ${VIEWBOX / 2} ${VIEWBOX / 4} ${VIEWBOX / 2 + HEIGHT * (layers + 1)} ${VIEWBOX * 3 / 4} ${VIEWBOX / 2 + HEIGHT * (layers + 1)} ${VIEWBOX} ${VIEWBOX / 2} ${VIEWBOX * 3 / 4} ${VIEWBOX / 2 - HEIGHT * (layers + 1)} ${VIEWBOX / 4} ${VIEWBOX / 2 - HEIGHT * (layers + 1)}" fill="${background}" />\n`;
 	}
