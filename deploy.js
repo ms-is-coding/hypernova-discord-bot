@@ -31,27 +31,30 @@ async function main() {
 		}
 	}
 
-	// Construct and prepare an instance of the REST module
-	const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 
 	try {
 		info(`Started refreshing ${commands.length} application commands.`);
 
-		// The put method is used to fully refresh all commands in the guild with the current set
 		if (process.env.NODE_ENV == "production") {
+
 			info("Running in production mode");
+			const rest = new REST().setToken(process.env.PROD_DISCORD_TOKEN);
 			const data = await rest.put(
-				Routes.applicationCommands(process.env.CLIENT_ID),
+				Routes.applicationCommands(process.env.PROD_CLIENT_ID),
 				{ body: commands },
 			);
 			info(`Reloaded ${data.length} application commands`);
+
 		}
 		else {
+
+			const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 			const data = await rest.put(
 				Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
 				{ body: commands },
 			);
 			info(`Reloaded ${data.length} application commands.`);
+
 		}
 
 	}

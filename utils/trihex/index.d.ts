@@ -38,3 +38,7 @@ interface TriHexOptions {
  * // note that in alpha mode, the text will be converted to lowercase
  */
 export function TriHex(data: any, options: TriHexOptions): string;
+
+export function validate(data: string, type: keyof Types): string;
+
+export function filter(data: string, type: keyof Types): string;

@@ -24,6 +24,8 @@ const Types = {
 	Utf8: 0b010010, // 8bits
 };
 
+Object.freeze(Types);
+
 function flat(l, t, scale, color) {
 	const x0 = l.toFixed(3);
 	const y0 = t.toFixed(3);
@@ -48,25 +50,25 @@ function getSize(data, type) {
 	const l = data.length;
 	switch (type) {
 
-	case Types.Numeric: return l * 4;
-	case Types.Alpha: return l * 5;
-	case Types.AlphaNum: return l * 6;
-	case Types.Ascii: return l * 7;
-	case Types.Hex: return l * 4;
-	case Types.Base32: return l * 5;
-	case Types.Base64: return l * 6;
-	case Types.Utf8: return l * 8;
+		case Types.Numeric: return l * 4;
+		case Types.Alpha: return l * 5;
+		case Types.AlphaNum: return l * 6;
+		case Types.Ascii: return l * 7;
+		case Types.Hex: return l * 4;
+		case Types.Base32: return l * 5;
+		case Types.Base64: return l * 6;
+		case Types.Utf8: return l * 8;
 
-	case Types.Unsigned8: return l * 8;
-	case Types.Signed8: return l * 8;
-	case Types.Unsigned16: return l * 16;
-	case Types.Signed16: return l * 16;
-	case Types.Unsigned32: return l * 32;
-	case Types.Signed32: return l * 32;
-	case Types.Unsigned64: return l * 64;
-	case Types.Signed64: return l * 64;
-	case Types.Float32: return l * 32;
-	case Types.Float64: return l * 64;
+		case Types.Unsigned8: return l * 8;
+		case Types.Signed8: return l * 8;
+		case Types.Unsigned16: return l * 16;
+		case Types.Signed16: return l * 16;
+		case Types.Unsigned32: return l * 32;
+		case Types.Signed32: return l * 32;
+		case Types.Unsigned64: return l * 64;
+		case Types.Signed64: return l * 64;
+		case Types.Float32: return l * 32;
+		case Types.Float64: return l * 64;
 
 	}
 }
@@ -146,34 +148,13 @@ function parseData(raw) {
 	return Buffer.from(raw);
 }
 
-/**
- * @param {"auto" |
-* "u8" |
-* "u16" |
-* "u32" |
-* "u64" |
-* "i8" |
-* "i16" |
-* "i32" |
-* "i64" |
-* "f32" |
-* "f64" |
-* "numeric" |
-* "alpha" |
-* "alphanumeric" |
-* "ascii" |
-* "utf8"
- * } type
- */
-
-
-function run(i, x, y, gen, scale) {
+function run(i, x, y, scale, color, gen) {
 	if (!gen.next().value) return "";
-	if (i % 2) return pointy(x, y, scale, "#777");
-	else return flat(x, y, scale, "#777");
+	if (i % 2) return pointy(x, y, scale, color);
+	else return flat(x, y, scale, color);
 }
 
-function genSvg(data) {
+function genSvg(data, options) {
 
 	// ! do not modify UPPERCASE constants
 	const SCALE = 4;
@@ -189,7 +170,11 @@ function genSvg(data) {
 	const buf = appendHead(parsed, layers, type, mask);
 	const bitGen = getDataGen(buf, mask);
 
-	if (layers > 31) {
+	const color = options.color ?? "#777";
+	const background = options.background;
+	const VIEWBOX = (layers + 1) * 2 * SCALE;
+
+	if (layers > 63) {
 		throw new Error("Data too big");
 	}
 
@@ -197,39 +182,42 @@ function genSvg(data) {
 		throw new Error("Data cannot be encoded");
 	}
 
-	let str = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layers * 2 * SCALE} ${layers * 2 * SCALE}" width="512" height="512">\n`;
+	let str = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEWBOX} ${VIEWBOX}" width="512" height="512">\n`;
+	if (background) {
+		str += `<polygon points="0 ${VIEWBOX / 2} ${VIEWBOX / 4} ${VIEWBOX / 2 + HEIGHT * (layers + 1)} ${VIEWBOX * 3 / 4} ${VIEWBOX / 2 + HEIGHT * (layers + 1)} ${VIEWBOX} ${VIEWBOX / 2} ${VIEWBOX * 3 / 4} ${VIEWBOX / 2 - HEIGHT * (layers + 1)} ${VIEWBOX / 4} ${VIEWBOX / 2 - HEIGHT * (layers + 1)}" fill="${background}" />\n`;
+	}
 
 	for (let l = 1; l <= layers; l++) {
-		let x = SCALE * (layers + l - 1);
-		let y = SCALE * layers - HEIGHT;
+		let x = SCALE * (layers + l);
+		let y = SCALE * (layers + 1) - HEIGHT;
 
 		let i = 1;
 
 		for (let j = 1; j <= s(l); i++, j++) {
-			str += run(i, x, y, bitGen, SCALE);
+			str += run(i, x, y, SCALE, color, bitGen);
 			if (i % 2) x -= WIDTH;
 			if (!(i % 2)) y -= HEIGHT;
 		}
 		for (let j = 1; j <= s(l); i++, j++) {
-			str += run(i, x, y, bitGen, SCALE);
+			str += run(i, x, y, SCALE, color, bitGen);
 			x -= WIDTH;
 		}
 		for (let j = 1; j <= s(l); i++, j++) {
-			str += run(i, x, y, bitGen, SCALE);
+			str += run(i, x, y, SCALE, color, bitGen);
 			if (!(i % 2)) x -= WIDTH;
 			if (i % 2) y += HEIGHT;
 		}
 		for (let j = 0; j < s(l); i++, j++) {
-			str += run(i, x, y, bitGen, SCALE);
+			str += run(i, x, y, SCALE, color, bitGen);
 			if (!(i % 2)) x += WIDTH;
 			if (i % 2) y += HEIGHT;
 		}
 		for (let j = 0; j < s(l); i++, j++) {
-			str += run(i, x, y, bitGen, SCALE);
+			str += run(i, x, y, SCALE, color, bitGen);
 			x += WIDTH;
 		}
 		for (let j = 0; j < s(l); i++, j++) {
-			str += run(i, x, y, bitGen, SCALE);
+			str += run(i, x, y, SCALE, color, bitGen);
 			if (i % 2) x += WIDTH;
 			if (!(i % 2)) y -= HEIGHT;
 		}
@@ -243,16 +231,17 @@ function genSvg(data) {
 function TriHex(data, options) {
 	return genSvg(data, options);
 }
-TriHex.Types = Types;
-TriHex.validate = (data, type) => {
+
+function validate(data, type) {
 	data;
 	type;
 	return true;
-};
-TriHex.filter = (data, type) => {
+}
+
+function filter(data, type) {
 	data;
 	type;
 	return data;
-};
+}
 
-module.exports = { TriHex };
+module.exports = { TriHex, filter, validate, Types };

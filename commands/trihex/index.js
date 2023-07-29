@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, AttachmentBuilder } = require("discord.js");
-const { TriHex } = require("../../utils/trihex");
+const { TriHex, filter, validate } = require("../../utils/trihex");
 const sharp = require("sharp");
 const { error } = require("../../utils/log");
 
@@ -30,6 +30,16 @@ command.addSubcommand(subcommand => {
 		);
 		return option;
 	});
+	subcommand.addStringOption(option => {
+		option.setName("color");
+		option.setDescription("The hex color of the triangles");
+		return option;
+	});
+	subcommand.addStringOption(option => {
+		option.setName("background");
+		option.setDescription("Replace transparency with a solid background (hex)");
+		return option;
+	});
 	return subcommand;
 });
 
@@ -40,18 +50,28 @@ async function execute(interaction) {
 	await interaction.deferReply();
 	const data = interaction.options.get("data").value;
 	const type = interaction.options.get("type", false)?.value;
-	const ok = TriHex.validate(data, type);
-	const valid = TriHex.filter(data, type);
+	const color = interaction.options.get("color", false)?.value;
+	const background = interaction.options.get("background", false)?.value;
 
-	if (!ok) {
+	if (color && !/^#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})$/.test(color)) {
+		await interaction.editReply({ ephemeral: true, content: "The `color` option is invalid" });
+		return;
+	}
+
+	if (background && !/^#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})$/.test(background)) {
+		await interaction.editReply({ ephemeral: true, content: "The `background` option is invalid" });
+		return;
+	}
+
+	if (!validate(data, type)) {
+		const valid = filter(data, type);
 		await interaction.editReply({ ephemeral: true, content: `The \`type\` you provided cannot represent the \`data\`\nYour input will appear like this: \`\`\`${valid}\`\`\`` });
 	}
 	// await interaction.followUp({ ephemeral: false });
 
 	try {
 		const svg = TriHex(data, {
-			type: type,
-			color: "#777777"
+			type, color, background
 		});
 		const image = await sharp(Buffer.from(svg, "utf8")).png().toBuffer();
 		await interaction.editReply({
