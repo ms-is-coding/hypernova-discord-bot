@@ -81,7 +81,7 @@ function getLayers(size) {
 
 function appendHead(rawdata, layers, type, mask) {
 	const l = layers - 4;
-	const b1 = 0xd0 | (l >> 4 & 0x2);
+	const b1 = 0xd0 | (l >> 4 & 0x3);
 	const b2 = (l << 4 & 0xf0) | (type >> 2);
 	const b3 = (type << 6 & 0xc0) | (mask << 2);
 	const head = Buffer.from([b1, b2, b3, 0xff, 0xff, 0xff, 0xfc, 0, 0, 0, 0, 0]);
@@ -99,27 +99,25 @@ function getType(data) {
 	// but should not break anything
 	else if (data instanceof Array) {
 		let hasFloat = false;
-
 		for (const element of data) {
 			if (typeof element != "number") return Types.Null;
 			if (element != parseInt(element)) hasFloat = true;
 		}
-
 		if (hasFloat) return Types.Float64;
 		else return Types.Signed64;
-
 	}
 
 	else if (typeof data == "string") {
-
-		if (/^[0-9]$/.test(data)) return Types.Numeric;
-		if (/^[a-zA-Z]$/.test(data)) return Types.Alpha;
-		if (/^[0-9a-f]$/.test(data)) return Types.Hex;
-		if (/^[a-zA-Z0-9]$/.test(data)) return Types.AlphaNum;
+		// start from smallest value count
+		if (/^[0-9 ]+$/.test(data)) return Types.Numeric; // 4bits (11values)
+		if (/^[0-9a-fA-F]+$/.test(data)) return Types.Hex; // 4bits (16values)
+		if (/^[a-zA-Z ]+$/.test(data)) return Types.Alpha; // 5bits (27values)
+		if (/^[a-zA-Z2-7=]+$/.test(data)) return Types.Base32; // 5bits
+		if (/^[a-zA-Z0-9\- ]+$/.test(data)) return Types.AlphaNum; // 6bits (64values) //! may cause problems for base64 detection.
+		if (/^([a-zA-Z0-9_=-]+|[a-zA-Z0-9/+=]+)$/.test(data)) return Types.Base64; // 6bits (64values)
+		if (data.split("").every(x => x.charCodeAt(0) < 128)) return Types.Ascii; // 7bits (128values)
 		else return Types.Utf8;
-
 	}
-
 }
 
 function s(l) { return 2 * l - 1; }
@@ -144,8 +142,44 @@ function* getDataGen(data, mask) {
 	}
 }
 
-function parseData(raw) {
-	return Buffer.from(raw);
+function parseData(data, type) {
+	if (type == Types.Hex) {
+		return Buffer.from(data, "hex")
+	}
+	if (type == Types.Base64) {
+		return Buffer.from(data, "base64");
+	}
+	return Buffer.from(data);
+}
+
+/**
+ * @param {Buffer} data
+ */
+function getMask(data) {
+	let optimal = 0;
+	//! fill mode
+	let coeff = 0;
+	for (let i = 0; i < 16; i++) {
+		let buf = data.map(x => x ^ ((i << 4) | i));
+		let current = buf.reduce((a,b,i)=>(a+b)*i/buf.length) / buf.length;
+		if (current > coeff) {
+			coeff = current;
+			optimal = i;
+		};
+	}
+	//! equal mode
+	// let dist = 0.5;
+	// for (let i = 0; i < 16; i++) {
+	// 	let buf = data.map(x => x ^ ((i << 4) | i));
+	// 	let arr = Array.from(buf).map(x => x.toString(2)).map(x => "0".repeat(8-x.length)+x).map(x => x.split("")).flat().map(x => +x);
+	// 	let current = arr.reduce((a,b,i)=>(a+b)*i/arr.length) / arr.length;
+	// 	let current_dist = Math.abs(current - 0.5);
+	// 	if (current_dist < dist) {
+	// 		dist = current_dist;
+	// 		optimal = i;
+	// 	}
+	// }
+	return optimal;
 }
 
 function run(i, x, y, scale, color, gen) {
@@ -161,12 +195,12 @@ function genSvg(data, options) {
 	const HEIGHT = 0.866 * SCALE;
 	const WIDTH = 0.5 * SCALE;
 
-	const type = getType(data);
+	const type = options.type ? Types[options.type] : getType(data);
 	const bitsize = getSize(data, type);
-	const parsed = parseData(data);
+	const parsed = parseData(data, type);
 	const layers = getLayers(bitsize);
 	// todo add algo to check all 16 masks
-	const mask = 0xa;
+	const mask = getMask(parsed);
 	const buf = appendHead(parsed, layers, type, mask);
 	const bitGen = getDataGen(buf, mask);
 
