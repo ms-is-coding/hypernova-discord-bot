@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, AttachmentBuilder } = require("discord.js");
-const { TriHex, filter, validate } = require("../../utils/trihex");
+const { TriHex, filter, validate, DataError } = require("../../utils/trihex");
 const sharp = require("sharp");
 const { error } = require("../../utils/log");
 
@@ -21,7 +21,7 @@ command.addSubcommand(subcommand => {
 		option.setChoices(
 			{ name: "Alpha - letters a-z and spaces (converted to lowercase)", value: "Alpha" },
 			{ name: "Numeric - numbers 0-9 and spaces", value: "Numeric" },
-			{ name: "AlphaNumeric - letters a-z, A-Z, numbers 0-9 and spaces", value: "AlphaNumeric" },
+			{ name: "AlphaNumeric - letters a-z, A-Z, numbers 0-9 and spaces", value: "AlphaNum" },
 			{ name: "ASCII - all symbols available on an english keyboard", value: "Ascii" },
 			{ name: "Hexadecimal - symbols 0-9, a-f", value: "Hex" },
 			{ name: "Base32 - RFC 4648 base32 (no padding).", value: "Base32" },
@@ -47,25 +47,25 @@ command.addSubcommand(subcommand => {
  * @param {import("discord.js").ChatInputCommandInteraction} interaction
  */
 async function execute(interaction) {
-	await interaction.deferReply();
+	await interaction.deferReply({ ephemeral: true });
 	const data = interaction.options.get("data").value;
 	const type = interaction.options.get("type", false)?.value;
 	const color = interaction.options.get("color", false)?.value;
 	const background = interaction.options.get("background", false)?.value;
 
 	if (color && !/^#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})$/.test(color)) {
-		await interaction.editReply({ ephemeral: true, content: "The `color` option is invalid" });
+		await interaction.editReply("The `color` option is invalid");
 		return;
 	}
 
 	if (background && !/^#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})$/.test(background)) {
-		await interaction.editReply({ ephemeral: true, content: "The `background` option is invalid" });
+		await interaction.editReply("The `background` option is invalid");
 		return;
 	}
 
 	if (!validate(data, type)) {
 		const valid = filter(data, type);
-		await interaction.editReply({ ephemeral: true, content: `The \`type\` you provided cannot represent the \`data\`\nYour input will appear like this: \`\`\`${valid}\`\`\`` });
+		await interaction.editReply(`The \`type\` you provided cannot represent the \`data\`\nYour input will appear like this: \`\`\`${valid}\`\`\``);
 	}
 	// await interaction.followUp({ ephemeral: false });
 
@@ -75,16 +75,19 @@ async function execute(interaction) {
 		});
 		const image = await sharp(Buffer.from(svg, "utf8")).png().toBuffer();
 		await interaction.editReply({
-			body: {
-				attachments: ["attachment://image.png"]
-			},
-			files: [
-				new AttachmentBuilder().setName("image.png").setFile(image)
-			]
+			body: { attachments: ["attachment://image.png"] },
+			files: [ new AttachmentBuilder().setName("image.png").setFile(image) ]
 		});
 	}
 	catch (err) {
-		error(`${err.name}: ${err.message}\n${err.stack}`);
+		if (!(err instanceof DataError)) return;
+		if (err.type == "Overflow") {
+			await interaction.editReply("The data you provided is too big.\nConsider using another encoding or a smaller dataset.");
+		}
+		else if (err.type == "NoEncoding") {
+			await interaction.editReply("Data cannot be properly encoded");
+		}
+		error(err.stack);
 	}
 }
 

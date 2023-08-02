@@ -22,6 +22,12 @@ enum Types {
 	Utf8     = 0b0010010, // 8bits
 }
 
+type Type = keyof typeof Types;
+
+class DataError {
+	type: "Overflow" | "NoEncoding"
+}
+
 interface TriHexOptions {
 	type: keyof typeof Types;
 	color: string | number;
@@ -39,6 +45,6 @@ interface TriHexOptions {
  */
 export function TriHex(data: any, options: TriHexOptions): string;
 
-export function validate(data: string, type: keyof Types): string;
+export function validate(data: string, type: Type): string;
 
-export function filter(data: string, type: keyof Types): string;
+export function filter(data: string, type: Type): string;
