@@ -142,14 +142,16 @@ function* getDataGen(data, mask) {
 	}
 }
 
-function parseData(data, type) {
+function parseData(data, type, layers, bitsize) {
+	const pad_size = (6 * layers ** 2 - bitsize) / 8;
+	const padding = Buffer.alloc(pad_size);
 	if (type == Types.Hex) {
-		return Buffer.from(data, "hex");
+		return Buffer.concat([Buffer.from(data, "hex"), padding]);
 	}
 	if (type == Types.Base64) {
-		return Buffer.from(data, "base64");
+		return Buffer.concat([Buffer.from(data, "base64"), padding]);
 	}
-	return Buffer.from(data);
+	return Buffer.concat([Buffer.from(data), padding]);
 }
 
 /**
@@ -158,27 +160,27 @@ function parseData(data, type) {
 function getMask(data) {
 	let optimal = 0;
 	// ! fill mode
-	let coeff = 0;
-	for (let i = 0; i < 16; i++) {
-		const buf = data.map(x => x ^ ((i << 4) | i));
-		const current = buf.reduce((a, b, j) => (a + b) * j / buf.length) / buf.length;
-		if (current > coeff) {
-			coeff = current;
-			optimal = i;
-		}
-	}
-	// ! equal mode
-	// let dist = 0.5;
+	// let coeff = 0;
 	// for (let i = 0; i < 16; i++) {
-	// 	let buf = data.map(x => x ^ ((i << 4) | i));
-	// 	let arr = Array.from(buf).map(x => x.toString(2)).map(x => "0".repeat(8-x.length)+x).map(x => x.split("")).flat().map(x => +x);
-	// 	let current = arr.reduce((a,b,i)=>(a+b)*i/arr.length) / arr.length;
-	// 	let current_dist = Math.abs(current - 0.5);
-	// 	if (current_dist < dist) {
-	// 		dist = current_dist;
+	// 	const buf = data.map(x => x ^ ((i << 4) | i));
+	// 	const current = buf.reduce((a, b, j) => (a + b) * j / buf.length) / buf.length;
+	// 	if (current > coeff) {
+	// 		coeff = current;
 	// 		optimal = i;
 	// 	}
 	// }
+	// ! equal mode
+	let dist = 0.75;
+	for (let i = 0; i < 16; i++) {
+		const buf = data.map(x => x ^ ((i << 4) | i));
+		const arr = Array.from(buf).map(x => x.toString(2)).map(x => "0".repeat(8 - x.length) + x).map(x => x.split("")).flat().map(x => +x);
+		const current = arr.reduce((a, b) => a + b) / arr.length;
+		const current_dist = Math.abs(current - 0.75);
+		if (current_dist < dist) {
+			dist = current_dist;
+			optimal = i;
+		}
+	}
 	return optimal;
 }
 
@@ -197,8 +199,8 @@ function genSvg(data, options) {
 
 	const type = options.type ? Types[options.type] : getType(data);
 	const bitsize = getSize(data, type);
-	const parsed = parseData(data, type);
 	const layers = getLayers(bitsize);
+	const parsed = parseData(data, type, layers, bitsize);
 	// todo add algo to check all 16 masks
 	const mask = getMask(parsed);
 	const buf = appendHead(parsed, layers, type, mask);

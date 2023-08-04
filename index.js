@@ -69,17 +69,22 @@ async function main() {
 		}
 
 		try {
-			await command.execute(interaction);
+			try {
+				await command.execute(interaction);
+			}
+			catch (err) {
+				error("Some error happened when executing command " + err.message);
+
+				if (interaction.replied || interaction.deferred) {
+					await interaction.followUp({ content: "There was an error while executing this command!", ephemeral: true });
+				}
+				else {
+					await interaction.reply({ content: "There was an error while executing this command!", ephemeral: true });
+				}
+			}
 		}
 		catch (err) {
-			error("Some error happened when executing command");
-
-			if (interaction.replied || interaction.deferred) {
-				await interaction.followUp({ content: "There was an error while executing this command!", ephemeral: true });
-			}
-			else {
-				await interaction.reply({ content: "There was an error while executing this command!", ephemeral: true });
-			}
+			error("An error happened " + err.message);
 		}
 	});
 
