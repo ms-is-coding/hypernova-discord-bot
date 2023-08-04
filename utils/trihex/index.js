@@ -144,7 +144,7 @@ function* getDataGen(data, mask) {
 
 function parseData(data, type) {
 	if (type == Types.Hex) {
-		return Buffer.from(data, "hex")
+		return Buffer.from(data, "hex");
 	}
 	if (type == Types.Base64) {
 		return Buffer.from(data, "base64");
@@ -157,17 +157,17 @@ function parseData(data, type) {
  */
 function getMask(data) {
 	let optimal = 0;
-	//! fill mode
+	// ! fill mode
 	let coeff = 0;
 	for (let i = 0; i < 16; i++) {
-		let buf = data.map(x => x ^ ((i << 4) | i));
-		let current = buf.reduce((a,b,i)=>(a+b)*i/buf.length) / buf.length;
+		const buf = data.map(x => x ^ ((i << 4) | i));
+		const current = buf.reduce((a, b, j) => (a + b) * j / buf.length) / buf.length;
 		if (current > coeff) {
 			coeff = current;
 			optimal = i;
-		};
+		}
 	}
-	//! equal mode
+	// ! equal mode
 	// let dist = 0.5;
 	// for (let i = 0; i < 16; i++) {
 	// 	let buf = data.map(x => x ^ ((i << 4) | i));

@@ -97,11 +97,6 @@ async function main() {
 		}
 	});
 
-	process.on("beforeExit", () => exit(client));
-	process.on("SIGTERM", () => exit(client));
-	process.on("SIGINT", () => exit(client));
-	process.on()
-
 	try {
 		// login to discord
 		await client.login(process.env.DISCORD_TOKEN);
@@ -110,17 +105,5 @@ async function main() {
 		error("Could not log in", true);
 	}
 }
-
-async function exit(client) {
-	console.log("Exiting");
-	try {
-		const channel = await client.channels.fetch("995268417261162559");
-		await channel.send("Bot going offline");
-	} catch (err) {
-		console.log("Bot already offline");
-		console.error(err);
-	}
-}
-
 
 main();
