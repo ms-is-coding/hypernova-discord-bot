@@ -165,7 +165,8 @@ async function main() {
 process.stdin.on("data", async buf => {
   try {
     console.log(eval(buf.toString("utf8")));
-  } catch (err) {
+  }
+  catch (err) {
     console.error(err);
   }
 });
