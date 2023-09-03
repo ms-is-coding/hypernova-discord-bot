@@ -155,17 +155,23 @@ async function main() {
 
   try {
     // login to discord
-    await client.login(process.env.PROD_DISCORD_TOKEN);
+    await client.login(process.env.DISCORD_TOKEN);
   }
   catch (err) {
     error("Could not log in", true);
   }
 }
 
-process.on("uncaughtException", (err, origin) => {
-  // db("errors").insert({  })
-  error(err.message);
-  error(origin);
+process.stdin.on("data", async buf => {
+  try {
+    console.log(eval(buf.toString("utf8")));
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+process.on("uncaughtException", err => {
+  error("uncaughtException: " + err.message);
 });
 
 main();
