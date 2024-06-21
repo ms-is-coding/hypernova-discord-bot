@@ -47,7 +47,7 @@ command.addSubcommand(subcommand => {
  * @param {import("discord.js").ChatInputCommandInteraction} interaction
  */
 async function execute(interaction) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ ephemeral: false });
   const data = interaction.options.get("data").value;
   const type = interaction.options.get("type", false)?.value;
   const color = interaction.options.get("color", false)?.value;

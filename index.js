@@ -74,7 +74,14 @@ async function main() {
 
   client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isModalSubmit()) {
-      console.log(interaction.customId);
+      if (interaction.customId.startsWith("feedback-modal")) {
+        const id = interaction.customId.slice(15);
+        interaction.reply({
+          content: "Thank you for the feedback!",
+          ephemeral: true
+        });
+        console.log(id, interaction.fields.getField("feedback").value);
+      }
     }
     if (!interaction.isChatInputCommand()) return;
 
